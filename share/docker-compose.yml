@@ -1,0 +1,38 @@
+version: "3"
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    # 起動時に失敗しても再起動
+    restart: always
+    # コンテナ名
+    container_name: nginx-proxy
+    privileged: true
+    ports:
+      # ホストのポート:docker側のポート
+      - "80:80"
+      - "443:443"
+    volumes:
+      # nginx-proxy用、読み込み専用
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      # ちゃんと証明書取得するとき用
+      # ホストのcertsディレクトリにSSL証明書を入れておく
+      #- ./certs:/etc/nginx/certs:ro
+    networks:
+      # 別のdocker-composeと連携するためにexternal: trueのネットワークを指定
+      - front_bridge
+
+  # lets encrypt使うとき用、サイト側にもVIRTUAL SSLの設定が必要にはなる
+  letsencrypt-nginx-proxy-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: nginx-letsencrypt
+    volumes:
+      - ./certs:/etc/nginx/certs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    volumes_from:
+      - nginx-proxy
+    restart: always
+
+networks:
+  front_bridge:
+    external: true
